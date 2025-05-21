@@ -1,4 +1,5 @@
 import tensorflow as tf
+from tensorflow import keras
 from keras import Sequential
 from keras.layers import Conv2D, BatchNormalization, MaxPooling2D, Dropout, GlobalAveragePooling2D, Dense
 from matplotlib import pyplot as plt
@@ -157,7 +158,7 @@ procedure = model.fit(
     epochs=30,
     callbacks=[
     tf.keras.callbacks.EarlyStopping(patience=10, restore_best_weights=True),
-    tf.keras.callbacks.ModelCheckpoint('first_CNN_BEST.h5', save_best_only=True)
+    tf.keras.callbacks.ModelCheckpoint('first_CNN_BEST.keras', save_best_only=True)
 ],
 )
 
@@ -173,4 +174,4 @@ plt.show()
 
 print(f"test_loss:{test_loss}\n")
 print(f"test_acc:{test_acc}")
-model.save('first_CNN.h5')
+
