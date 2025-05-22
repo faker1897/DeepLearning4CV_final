@@ -6,7 +6,7 @@ import tensorflow as tf
 import data_process
 import focal_loss
 
-model = load_model('model/model_first/first_CNN_BEST.keras',custom_objects={
+model = load_model('model/model_second_focal/focal_loss.keras',custom_objects={
     'multi_category_focal_loss1_fixed': focal_loss
 })
 
