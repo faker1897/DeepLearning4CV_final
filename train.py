@@ -151,7 +151,7 @@ model.summary()
 model.compile(
     optimizer='adam',
     # loss function
-    loss=focal_loss.multi_category_focal_loss1([1.1, 5.33, 1.09, 0.82, 0.99, 1.03, 1.22]),
+    loss=focal_loss.multi_category_focal_loss1([1.15, 2.3, 1.14, 1.0, 1.1, 1.12, 1.22]),
     metrics=['accuracy'],
 
 )
