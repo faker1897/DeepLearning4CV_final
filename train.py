@@ -9,6 +9,7 @@ import os
 import data_process
 from sklearn.utils import class_weight
 import numpy as np
+import focal_loss
 
 print("Num GPUs Available:", len(tf.config.list_physical_devices('GPU')))
 
@@ -68,6 +69,9 @@ data_augmentation = keras.Sequential([
     layers.Rescaling(1./255),
 
 ])
+train_ds = train_ds.map(data_process.to_Hot)
+validate_ds = validate_ds.map(data_process.to_Hot)
+test_ds = test_ds.map(data_process.to_Hot)
 
 test_normalize = keras.Sequential([
     layers.Rescaling(1./255)
@@ -147,7 +151,7 @@ model.summary()
 model.compile(
     optimizer='adam',
     # loss function
-    loss='sparse_categorical_crossentropy',
+    loss=focal_loss.multi_category_focal_loss1([1.1, 5.33, 1.09, 0.82, 0.99, 1.03, 1.22]),
     metrics=['accuracy'],
 
 )
@@ -155,10 +159,10 @@ model.compile(
 procedure = model.fit(
     train_ds,
     validation_data=validate_ds,
-    epochs=30,
+    epochs=100,
     callbacks=[
     tf.keras.callbacks.EarlyStopping(patience=10, restore_best_weights=True),
-    tf.keras.callbacks.ModelCheckpoint('first_CNN_BEST.keras', save_best_only=True)
+    tf.keras.callbacks.ModelCheckpoint('model/model_second_focal/focal_loss.keras', save_best_only=True)
 ],
 )
 
