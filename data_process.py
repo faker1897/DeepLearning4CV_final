@@ -23,3 +23,7 @@ def augmentation(train_ds,data_augmentation):
 
     plt.tight_layout()
     plt.show()
+
+def to_Hot(image,label):
+    label = tf.one_hot(label, depth=7)
+    return image, label
