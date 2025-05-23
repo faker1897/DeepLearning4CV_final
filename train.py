@@ -1,7 +1,8 @@
 import tensorflow as tf
+from keras.regularizers import l2
 from tensorflow import keras
 from keras import Sequential
-from keras.layers import Conv2D, BatchNormalization, MaxPooling2D, Dropout, GlobalAveragePooling2D, Dense
+from keras.layers import Conv2D, BatchNormalization, MaxPooling2D, Dropout, GlobalAveragePooling2D, Dense, Activation
 from matplotlib import pyplot as plt
 from tensorflow import keras
 from tensorflow.keras import layers,models
@@ -59,6 +60,7 @@ test_ds = tf.keras.utils.image_dataset_from_directory(
 class_name = train_ds.class_names
 print(class_name)
 
+
 data_augmentation = keras.Sequential([
     layers.RandomFlip("horizontal"),
     layers.RandomRotation(0.2),
@@ -69,6 +71,7 @@ data_augmentation = keras.Sequential([
     layers.Rescaling(1./255),
 
 ])
+
 train_ds = train_ds.map(data_process.to_Hot)
 validate_ds = validate_ds.map(data_process.to_Hot)
 test_ds = test_ds.map(data_process.to_Hot)
@@ -77,11 +80,12 @@ test_normalize = keras.Sequential([
     layers.Rescaling(1./255)
 ])
 
-data_process.augmentation(train_ds,data_augmentation)
+# show the outcome
+data_process.show_augmentation(train_ds,data_augmentation)
 
 validate_ds = validate_ds.map(lambda x,y: (test_normalize(x), y))
 test_ds = test_ds.map(lambda x,y: (test_normalize(x), y))
-train_ds = train_ds.map(lambda x,y: (data_augmentation(x), y))
+train_ds = train_ds.map(data_process.augment_combined)
 
 train_ds = train_ds.prefetch(buffer_size=tf.data.AUTOTUNE)
 validate_ds = validate_ds.prefetch(buffer_size=tf.data.AUTOTUNE)
@@ -94,7 +98,8 @@ model.add(Conv2D(
     kernel_size=3,
     padding='same',
     activation='relu',
-    input_shape=(48,48,1)
+    input_shape=(48,48,1),
+    kernel_regularizer=l2(1e-4)
 ))
 
 model.add(Conv2D(
@@ -102,6 +107,7 @@ model.add(Conv2D(
     kernel_size=3,
     padding='same',
     activation='relu',
+    kernel_regularizer=l2(1e-4)
 ))
 
 model.add(MaxPooling2D(pool_size=2))
@@ -110,35 +116,45 @@ model.add(Conv2D(
     filters=64,
     kernel_size=3,
     padding='same',
-    activation='relu',
+    kernel_regularizer=l2(1e-4)
 ))
+model.add(BatchNormalization())
+model.add(Activation('relu'))
 
 model.add(Conv2D(
     filters=64,
     kernel_size=3,
     padding='same',
-    activation='relu',
+    kernel_regularizer=l2(1e-4)
 ))
+model.add(BatchNormalization())
+model.add(Activation('relu'))
 
 model.add(MaxPooling2D(pool_size=2))
+model.add(Dropout(0.15))
+model.add(Conv2D(
+    filters=128,
+    kernel_size=3,
+    padding='same',
+    kernel_regularizer=l2(1e-4)
+))
+model.add(BatchNormalization())
+model.add(Activation('relu'))
 
 model.add(Conv2D(
     filters=128,
     kernel_size=3,
     padding='same',
-    activation='relu',
+    kernel_regularizer=l2(1e-4)
 ))
-
-model.add(Conv2D(
-    filters=128,
-    kernel_size=3,
-    padding='same',
-    activation='relu',
-))
+model.add(BatchNormalization())
+model.add(Activation('relu'))
 
 model.add(MaxPooling2D(pool_size=2))
+model.add(Dropout(0.15))
 
 model.add(layers.Flatten())
+model.add(Dropout(0.5))
 model.add(Dense(128,activation='relu'))
 model.add(Dense(7,activation='softmax'))
 
@@ -151,7 +167,7 @@ model.summary()
 model.compile(
     optimizer='adam',
     # loss function
-    loss=focal_loss.multi_category_focal_loss1([1.15, 2.3, 1.14, 1.0, 1.1, 1.12, 1.22]),
+    loss=focal_loss.multi_category_focal_loss1([1.15, 1.5, 1.23, 1.0, 1.1, 1.12, 1.22]),
     metrics=['accuracy'],
 
 )
@@ -162,7 +178,7 @@ procedure = model.fit(
     epochs=100,
     callbacks=[
     tf.keras.callbacks.EarlyStopping(patience=10, restore_best_weights=True),
-    tf.keras.callbacks.ModelCheckpoint('model/model_second_focal/focal_loss.keras', save_best_only=True)
+    tf.keras.callbacks.ModelCheckpoint('model/augment_combine/augment_disgust.keras', save_best_only=True)
 ],
 )
 
