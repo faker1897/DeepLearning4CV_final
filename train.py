@@ -2,7 +2,8 @@ import tensorflow as tf
 from keras.regularizers import l2
 from tensorflow import keras
 from keras import Sequential
-from keras.layers import Conv2D, BatchNormalization, MaxPooling2D, Dropout, GlobalAveragePooling2D, Dense, Activation
+from keras.layers import Conv2D, BatchNormalization, MaxPooling2D, Dropout, GlobalAveragePooling2D, Dense, Activation, \
+    Flatten
 from matplotlib import pyplot as plt
 from tensorflow import keras
 from tensorflow.keras import layers,models
@@ -85,7 +86,7 @@ data_process.show_augmentation(train_ds,data_augmentation)
 
 validate_ds = validate_ds.map(lambda x,y: (test_normalize(x), y))
 test_ds = test_ds.map(lambda x,y: (test_normalize(x), y))
-train_ds = train_ds.map(data_process.augment_combined)
+train_ds = train_ds.map(lambda x,y:(data_augmentation(x),y))
 
 train_ds = train_ds.prefetch(buffer_size=tf.data.AUTOTUNE)
 validate_ds = validate_ds.prefetch(buffer_size=tf.data.AUTOTUNE)
@@ -93,70 +94,21 @@ test_ds = test_ds.prefetch(buffer_size=tf.data.AUTOTUNE)
 
 # Start to build model
 model = Sequential()
-model.add(Conv2D(
-    filters=32,
-    kernel_size=3,
-    padding='same',
-    activation='relu',
-    input_shape=(48,48,1),
-    kernel_regularizer=l2(1e-4)
-))
+model.add(Conv2D(32, kernel_size=(3, 3), activation='relu', input_shape=(48, 48, 1)))
+model.add(Conv2D(64, (3, 3), activation='relu'))
+model.add(MaxPooling2D(pool_size=(2, 2)))
+model.add(Dropout(0.25))
 
-model.add(Conv2D(
-    filters=32,
-    kernel_size=3,
-    padding='same',
-    activation='relu',
-    kernel_regularizer=l2(1e-4)
-))
+model.add(Conv2D(128, (3, 3), activation='relu'))
+model.add(MaxPooling2D(pool_size=(2, 2)))
+model.add(Conv2D(128, (3, 3), activation='relu'))
+model.add(MaxPooling2D(pool_size=(2, 2)))
+model.add(Dropout(0.25))
 
-model.add(MaxPooling2D(pool_size=2))
-
-model.add(Conv2D(
-    filters=64,
-    kernel_size=3,
-    padding='same',
-    kernel_regularizer=l2(1e-4)
-))
-model.add(BatchNormalization())
-model.add(Activation('relu'))
-
-model.add(Conv2D(
-    filters=64,
-    kernel_size=3,
-    padding='same',
-    kernel_regularizer=l2(1e-4)
-))
-model.add(BatchNormalization())
-model.add(Activation('relu'))
-
-model.add(MaxPooling2D(pool_size=2))
-model.add(Dropout(0.15))
-model.add(Conv2D(
-    filters=128,
-    kernel_size=3,
-    padding='same',
-    kernel_regularizer=l2(1e-4)
-))
-model.add(BatchNormalization())
-model.add(Activation('relu'))
-
-model.add(Conv2D(
-    filters=128,
-    kernel_size=3,
-    padding='same',
-    kernel_regularizer=l2(1e-4)
-))
-model.add(BatchNormalization())
-model.add(Activation('relu'))
-
-model.add(MaxPooling2D(pool_size=2))
-model.add(Dropout(0.15))
-
-model.add(layers.Flatten())
+model.add(Flatten())
+model.add(Dense(1024, activation='relu'))
 model.add(Dropout(0.5))
-model.add(Dense(128,activation='relu'))
-model.add(Dense(7,activation='softmax'))
+model.add(Dense(7, activation='softmax'))
 
 
 # Output the model details

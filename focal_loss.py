@@ -2,12 +2,6 @@ import tensorflow as tf
 
 
 def multi_category_focal_loss1(alpha, gamma=2.0):
-    """
-    focal loss for multi category of multi label problem
-
-    Usage:
-     model.compile(loss=[multi_category_focal_loss1(alpha=[1,2,3,2], gamma=2)], metrics=["accuracy"], optimizer=adam)
-    """
     epsilon = 1.e-7
     alpha = tf.constant(alpha, dtype=tf.float32)
     #alpha = tf.constant([[1],[1],[1],[1],[1]], dtype=tf.float32)
