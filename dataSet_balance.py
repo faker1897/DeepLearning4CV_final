@@ -2,7 +2,7 @@ import os
 import tensorflow as tf
 directory = "dataSet/train"
 
-#
+# Calculate the class_weight
 class_counts = {}
 for class_name in os.listdir(directory):
     class_path = os.path.join(directory, class_name)

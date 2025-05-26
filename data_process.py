@@ -1,6 +1,8 @@
 import matplotlib.pyplot as plt
 import tensorflow as tf
 
+
+# show the augmentation example
 def augmentation(train_ds,data_augmentation):
     for images, labels in train_ds.take(1):
         original_images = images
@@ -9,6 +11,7 @@ def augmentation(train_ds,data_augmentation):
 
     plt.figure(figsize=(10, 4))
 
+# draw
     for i in range(5):
         # original_version
         plt.subplot(2, 5, i + 1)
