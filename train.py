@@ -78,9 +78,11 @@ data_augmentation = keras.Sequential([
     layers.Rescaling(1./255),
 ])
 
+# - convert grayscale → RGB for MobileNetV2
 train_ds = train_ds.map(data_process.convert_VGG)
 test_ds = test_ds.map(data_process.convert_VGG)
 validate_ds = validate_ds.map(data_process.convert_VGG)
+
 # convert label to on-hot
 train_ds = train_ds.map(data_process.to_Hot)
 validate_ds = validate_ds.map(data_process.to_Hot)
@@ -92,8 +94,10 @@ test_normalize = keras.Sequential([
 
 data_process.augmentation(train_ds,data_augmentation)
 
+# Normalization layer for validation/test (no augmentation)
 validate_ds = validate_ds.map(lambda x,y: (test_normalize(x), y))
 test_ds = test_ds.map(lambda x,y: (test_normalize(x), y))
+# Augment the train dataset
 train_ds = train_ds.map(lambda x,y: (data_augmentation(x), y))
 
 train_ds = train_ds.prefetch(buffer_size=tf.data.AUTOTUNE)
@@ -105,14 +109,18 @@ mobilenet = MobileNetV2(weights='imagenet',
                         include_top=False,
                         input_shape=(48, 48, 3))
 
+# Freeze all convolutional layers
 for layer in mobilenet.layers:
     layer.trainable = False
 
+# Add custom classification head
 head = mobilenet.output
 head = Dense(256, activation='relu')(head)
 head = Dropout(0.5)(head)
 head = GlobalAveragePooling2D()(head)
 head = Dense(7, activation='softmax')(head)
+
+# Build final model
 
 model = Model(inputs=mobilenet.input, outputs=head)
 
@@ -130,6 +138,7 @@ procedure = model.fit(
     batch_size=32,
     epochs=100,
     callbacks = [
+        # Save the best model (based on validation accuracy)
         ModelCheckpoint(
             filepath="best_model.keras",
             monitor="val_accuracy",
@@ -137,11 +146,14 @@ procedure = model.fit(
             save_weights_only=False,
             verbose=1
         ),
+        # Stop early if accuracy does not improve
         EarlyStopping(monitor = 'val_accuracy',
                        min_delta = 0.00005,
                        patience = 11,
                        verbose = 1,
                        restore_best_weights = True,),
+        
+         # Reduce learning rate if validation accuracy plateaus
         ReduceLROnPlateau(monitor = 'val_accuracy',
                          factor = 0.5,
                          patience = 7,
