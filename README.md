@@ -10,6 +10,8 @@
 |            |--------gan.py(Discriminator,Generator)
 |            |--------all GAN models
 |            |--------generate.py(generate fake data)
+|
+|————————————model(all different model file and history and confusion matrix)
 |    
 |____data_process.py(functions to process data)
 |____data_balance.py(to show the number of each type of photo)
