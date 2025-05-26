@@ -1,0 +1,9 @@
+# é»˜è®¤å¿½ç•¥çš„æ–‡ä»¶
+/shelf/
+/workspace.xml
+# åŸºäºç¼–è¾‘å™¨çš„ HTTP å®¢æˆ·ç«¯è¯·æ±‚
+/httpRequests/
+# Datasource local storage ignored files
+/dataSources/
+/dataSources.local.xml
+"model/VGG/"            # ºöÂÔÕû¸öÎÄ¼ş¼ĞÀïµÄÄ£ĞÍ
