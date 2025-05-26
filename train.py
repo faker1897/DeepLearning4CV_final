@@ -10,6 +10,16 @@ import data_process
 from sklearn.utils import class_weight
 import numpy as np
 import focal_loss
+from tensorflow.keras.applications import VGG16
+from tensorflow.keras.models import Model
+from tensorflow.keras.layers import Flatten, Dense, Dropout, Input
+from tensorflow.keras.optimizers import SGD
+import focal_loss
+from tensorflow.keras.callbacks import ModelCheckpoint
+from tensorflow.keras.callbacks import EarlyStopping
+from tensorflow.keras.callbacks import ReduceLROnPlateau
+from tensorflow.keras import optimizers
+from tensorflow.keras.applications import MobileNetV2
 
 print("Num GPUs Available:", len(tf.config.list_physical_devices('GPU')))
 
@@ -33,7 +43,7 @@ train_ds = tf.keras.utils.image_dataset_from_directory(
     seed=529,
     image_size=(48, 48),
     color_mode="grayscale",
-    batch_size=128,
+    batch_size=32,
 )
 
 # Load validation dataset
@@ -44,7 +54,7 @@ validate_ds = tf.keras.utils.image_dataset_from_directory(
     seed=529,
     image_size=(48, 48),
     color_mode="grayscale",
-    batch_size=128,
+    batch_size=32,
 )
 
 #Load test Dataset
@@ -52,7 +62,7 @@ test_ds = tf.keras.utils.image_dataset_from_directory(
     'dataSet/test',
     image_size=(48,48),
     color_mode='grayscale',
-    batch_size=128,
+    batch_size=32,
 )
 
 # Verify whether the data has been loaded successfully
@@ -64,11 +74,14 @@ data_augmentation = keras.Sequential([
     layers.RandomRotation(0.2),
     layers.RandomZoom(0.2),
     layers.RandomContrast(0.1),
-    # Normalization combined with random brightness adjustment improves the model's robustness
-    layers.RandomBrightness(factor=0.1),
+    layers.RandomBrightness(0.1),
     layers.Rescaling(1./255),
-
 ])
+
+train_ds = train_ds.map(data_process.convert_VGG)
+test_ds = test_ds.map(data_process.convert_VGG)
+validate_ds = validate_ds.map(data_process.convert_VGG)
+# convert label to on-hot
 train_ds = train_ds.map(data_process.to_Hot)
 validate_ds = validate_ds.map(data_process.to_Hot)
 test_ds = test_ds.map(data_process.to_Hot)
@@ -87,84 +100,57 @@ train_ds = train_ds.prefetch(buffer_size=tf.data.AUTOTUNE)
 validate_ds = validate_ds.prefetch(buffer_size=tf.data.AUTOTUNE)
 test_ds = test_ds.prefetch(buffer_size=tf.data.AUTOTUNE)
 
-# Start to build model
-model = Sequential()
-model.add(Conv2D(
-    filters=32,
-    kernel_size=3,
-    padding='same',
-    activation='relu',
-    input_shape=(48,48,1)
-))
+# import MOBIL
+mobilenet = MobileNetV2(weights='imagenet',
+                        include_top=False,
+                        input_shape=(48, 48, 3))
 
-model.add(Conv2D(
-    filters=32,
-    kernel_size=3,
-    padding='same',
-    activation='relu',
-))
+for layer in mobilenet.layers:
+    layer.trainable = False
 
-model.add(MaxPooling2D(pool_size=2))
+head = mobilenet.output
+head = Dense(256, activation='relu')(head)
+head = Dropout(0.5)(head)
+head = GlobalAveragePooling2D()(head)
+head = Dense(7, activation='softmax')(head)
 
-model.add(Conv2D(
-    filters=64,
-    kernel_size=3,
-    padding='same',
-    activation='relu',
-))
-
-model.add(Conv2D(
-    filters=64,
-    kernel_size=3,
-    padding='same',
-    activation='relu',
-))
-
-model.add(MaxPooling2D(pool_size=2))
-
-model.add(Conv2D(
-    filters=128,
-    kernel_size=3,
-    padding='same',
-    activation='relu',
-))
-
-model.add(Conv2D(
-    filters=128,
-    kernel_size=3,
-    padding='same',
-    activation='relu',
-))
-
-model.add(MaxPooling2D(pool_size=2))
-
-model.add(layers.Flatten())
-model.add(Dense(128,activation='relu'))
-model.add(Dense(7,activation='softmax'))
+model = Model(inputs=mobilenet.input, outputs=head)
 
 
-# Output the model details
-model.summary()
+print(model.summary())
 
+optims = [optimizers.Adam(learning_rate = 0.0001,
+                          beta_1 = 0.9, beta_2 = 0.999),]
+model.compile(loss= focal_loss.multi_category_focal_loss1([1,1.6,1,1,1,1,1]), metrics=['accuracy'], optimizer=optims[0])
 
-# Start train
-model.compile(
-    optimizer='adam',
-    # loss function
-    loss=focal_loss.multi_category_focal_loss1([1.15, 2.3, 1.14, 1.0, 1.1, 1.12, 1.22]),
-    metrics=['accuracy'],
-
-)
 
 procedure = model.fit(
     train_ds,
     validation_data=validate_ds,
+    batch_size=32,
     epochs=100,
-    callbacks=[
-    tf.keras.callbacks.EarlyStopping(patience=10, restore_best_weights=True),
-    tf.keras.callbacks.ModelCheckpoint('model/model_second_focal/focal_loss.keras', save_best_only=True)
-],
+    callbacks = [
+        ModelCheckpoint(
+            filepath="best_model.keras",
+            monitor="val_accuracy",
+            save_best_only=True,
+            save_weights_only=False,
+            verbose=1
+        ),
+        EarlyStopping(monitor = 'val_accuracy',
+                       min_delta = 0.00005,
+                       patience = 11,
+                       verbose = 1,
+                       restore_best_weights = True,),
+        ReduceLROnPlateau(monitor = 'val_accuracy',
+                         factor = 0.5,
+                         patience = 7,
+                         min_lr = 1e-7,
+                         verbose = 1,)
+    ]
 )
+
+
 
 
 test_loss, test_acc = model.evaluate(test_ds)

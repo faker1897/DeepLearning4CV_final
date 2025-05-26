@@ -27,3 +27,8 @@ def augmentation(train_ds,data_augmentation):
 def to_Hot(image,label):
     label = tf.one_hot(label, depth=7)
     return image, label
+
+
+def convert_VGG(image,label):
+    image = tf.image.grayscale_to_rgb(image)
+    return image,label
