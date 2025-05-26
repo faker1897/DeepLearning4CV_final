@@ -55,19 +55,19 @@ def augment_combined(images, labels):
     images = rescale(images)
     indices = tf.argmax(labels, axis=1)
     rand_vector = tf.random.uniform(shape=[tf.shape(images)[0]])
-    # disgust
+    # disgust 60% chance of being augmented
     mask1 = tf.logical_and(tf.equal(indices, 1), rand_vector < 0.6)
-    # fear
+    # fear 30% chance of being augmented
     mask2 = tf.logical_and(tf.equal(indices, 2), rand_vector < 0.3)
-    # surprise
+    # surprise 10% chance of being augmented
     mask3 = tf.logical_and(tf.equal(indices, 6), rand_vector < 0.1)
-    # angry
+    # angry 20% chance of being augmented
     mask4 = tf.logical_and(tf.equal(indices, 0), rand_vector < 0.2)
+    # Combine all masks into a single one
     mask = tf.logical_or(tf.logical_or(mask1, mask2), tf.logical_or(mask3,mask4))
     mask = tf.reshape(mask, (-1, 1, 1, 1))
     augmented = data_augmentation(images)
+    # Use the mask to select augmented images where applicable
     final_images = tf.where(mask, augmented, images)
 
     return final_images, labels
-
-

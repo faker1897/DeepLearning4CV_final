@@ -8,7 +8,9 @@ from gan import Generator, Discriminator
 from dataset import make_dataset
 
 
+# Save a grid of generated images to a PNG file
 def save_result(val_out, val_block_size, image_path, color_mode):
+    # Scale images from [-1, 1] to [0, 255]
     def preprocess(img):
         img = ((img + 1.0) * 127.5).astype(np.uint8)
         return img
@@ -16,6 +18,7 @@ def save_result(val_out, val_block_size, image_path, color_mode):
     preprocessed = preprocess(val_out)
     final_image = np.array([])
     single_row = np.array([])
+    # Arrange images into a grid
     for b in range(val_out.shape[0]):
         # Concatenate images into a row
         if single_row.size == 0:
@@ -31,25 +34,26 @@ def save_result(val_out, val_block_size, image_path, color_mode):
                 final_image = np.concatenate((final_image, single_row), axis=0)
             single_row = np.array([])
 
+    # Remove the grayscale channel dimension if necessary
     if final_image.shape[2] == 1:
         final_image = np.squeeze(final_image, axis=2)
     Image.fromarray(final_image).save(image_path)
 
-
+# Binary cross-entropy loss for real (label=1)
 def celoss_ones(logits):
     # Cross entropy loss for labels = 1 (using label smoothing 0.9)
     y = tf.ones_like(logits) * 0.9
     loss = keras.losses.binary_crossentropy(y, logits, from_logits=True)
     return tf.reduce_mean(loss)
 
-
+# Binary cross-entropy loss for fake (label=0)
 def celoss_zeros(logits):
     # Cross entropy loss for labels = 0
     y = tf.zeros_like(logits)
     loss = keras.losses.binary_crossentropy(y, logits, from_logits=True)
     return tf.reduce_mean(loss)
 
-
+# Discriminator loss = loss on real + loss on fake
 def d_loss_fn(generator, discriminator, batch_z, batch_x, training):
     # Discriminator loss
     fake_image = generator(batch_z, training)
@@ -60,7 +64,7 @@ def d_loss_fn(generator, discriminator, batch_z, batch_x, training):
     loss = d_loss_fake + d_loss_real
     return loss
 
-
+# Generator loss = how well it fools the discriminator
 def g_loss_fn(generator, discriminator, batch_z, training):
     # Generator loss
     fake_image = generator(batch_z, training)
@@ -89,32 +93,42 @@ def main():
     # Create dataset
     dataset, img_shape, _ = make_dataset(img_path, batch_size, resize=64)
     print(dataset, img_shape)
+    # Inspect one sample batch
     sample = next(iter(dataset))
     print(sample.shape, tf.reduce_max(sample).numpy(), tf.reduce_min(sample).numpy())
+    # Repeat the dataset indefinitely
     dataset = dataset.repeat()
     db_iter = iter(dataset)
 
+
+    # Initialize generator and discriminator models
     generator = Generator()
     generator.build(input_shape=(4, z_dim))
     discriminator = Discriminator()
     discriminator.build(input_shape=(4, 64, 64, 1))
 
+    # Define optimizers for both networks
     g_optimizer = keras.optimizers.Adam(learning_rate=learning_rate, beta_1=0.5)
     d_optimizer = keras.optimizers.Adam(learning_rate=learning_rate, beta_1=0.5)
 
     d_losses, g_losses = [], []
+
+    # Start training loop
     for epoch in range(epochs):
-        # Train discriminator
+
         for _ in range(5):
             batch_z = tf.random.normal([batch_size, z_dim])
             batch_x = next(db_iter)
+            # Train discriminator
             with tf.GradientTape() as tape:
                 d_loss = d_loss_fn(generator, discriminator, batch_z, batch_x, training)
             grads = tape.gradient(d_loss, discriminator.trainable_variables)
             d_optimizer.apply_gradients(zip(grads, discriminator.trainable_variables))
 
+            # Sample new noise
             batch_z = tf.random.normal([batch_size, z_dim])
             batch_x = next(db_iter)
+            # Train generator
             with tf.GradientTape() as tape:
                 g_loss = g_loss_fn(generator, discriminator, batch_z, training)
             grads = tape.gradient(g_loss, generator.trainable_variables)

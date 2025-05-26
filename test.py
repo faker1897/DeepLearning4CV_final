@@ -6,10 +6,12 @@ import tensorflow as tf
 import data_process
 import focal_loss
 
-model = load_model('model/augment_combine/augment_disgust.keras',custom_objects={
+# Load trained model with custom focal loss
+model = load_model('model/model_second_focal/final_model.keras',custom_objects={
     'multi_category_focal_loss1_fixed': focal_loss
 })
 
+# Load the test dataset
 test_ds=tf.keras.utils.image_dataset_from_directory(
     'dataSet/test',
     image_size=(48, 48),
@@ -20,20 +22,28 @@ test_ds=tf.keras.utils.image_dataset_from_directory(
 
 test_ds=test_ds.map(lambda x,y:(x/255,y))
 test_ds = test_ds.map(data_process.to_Hot)
+
+# Predict class probabilities using the model
 predict = model.predict(test_ds)
 label_predict = np.argmax(predict, axis=1)
+
+# Extract true labels from the dataset
 label_true = []
 for image,label_test in test_ds:
     label_true.extend(label_test.numpy())
 
 label_true = np.array(label_true)
 label_true = np.argmax(label_true, axis=1)
+
+# Generate confusion matrix and classification report
 confusion = confusion_matrix(label_true,label_predict )
 classification = ['angry', 'disgust', 'fear', 'happy', 'neutral', 'sad', 'surprise']
 
 print("Classification Report:\n")
 print(classification_report(label_true,label_predict, target_names=classification))
 
+
+# Display confusion matrix with matplotlib
 output = ConfusionMatrixDisplay(confusion_matrix=confusion, display_labels=classification)
 output.plot(cmap='Blues')
 plt.title("Confusion Matrix")

@@ -73,6 +73,7 @@ data_augmentation = keras.Sequential([
 
 ])
 
+# Convert labels to one-hot
 train_ds = train_ds.map(data_process.to_Hot)
 validate_ds = validate_ds.map(data_process.to_Hot)
 test_ds = test_ds.map(data_process.to_Hot)
@@ -81,30 +82,36 @@ test_normalize = keras.Sequential([
     layers.Rescaling(1./255)
 ])
 
-# show the outcome
+# Show example augmented images
 data_process.show_augmentation(train_ds,data_augmentation)
 
+# Apply normalization and augmentation
 validate_ds = validate_ds.map(lambda x,y: (test_normalize(x), y))
 test_ds = test_ds.map(lambda x,y: (test_normalize(x), y))
 train_ds = train_ds.map(lambda x,y:(data_augmentation(x),y))
 
+# Prefetch to improve performance
 train_ds = train_ds.prefetch(buffer_size=tf.data.AUTOTUNE)
 validate_ds = validate_ds.prefetch(buffer_size=tf.data.AUTOTUNE)
 test_ds = test_ds.prefetch(buffer_size=tf.data.AUTOTUNE)
 
 # Start to build model
 model = Sequential()
+
+# Convolutional Block 1
 model.add(Conv2D(32, kernel_size=(3, 3), activation='relu', input_shape=(48, 48, 1)))
 model.add(Conv2D(64, (3, 3), activation='relu'))
 model.add(MaxPooling2D(pool_size=(2, 2)))
 model.add(Dropout(0.25))
 
+# Convolutional Block 2
 model.add(Conv2D(128, (3, 3), activation='relu'))
 model.add(MaxPooling2D(pool_size=(2, 2)))
 model.add(Conv2D(128, (3, 3), activation='relu'))
 model.add(MaxPooling2D(pool_size=(2, 2)))
 model.add(Dropout(0.25))
 
+# Fully Connected Block
 model.add(Flatten())
 model.add(Dense(1024, activation='relu'))
 model.add(Dropout(0.5))
@@ -129,7 +136,9 @@ procedure = model.fit(
     validation_data=validate_ds,
     epochs=100,
     callbacks=[
+        # Stop training if val loss doesn't improve for 10 epochs
     tf.keras.callbacks.EarlyStopping(patience=10, restore_best_weights=True),
+        # Save the best model based on val loss
     tf.keras.callbacks.ModelCheckpoint('model/augment_combine/augment_disgust.keras', save_best_only=True)
 ],
 )
@@ -146,4 +155,3 @@ plt.show()
 
 print(f"test_loss:{test_loss}\n")
 print(f"test_acc:{test_acc}")
-
